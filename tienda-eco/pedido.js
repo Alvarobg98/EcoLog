@@ -1,79 +1,93 @@
+// Libreria dayjs importada
 const dayjs = require('dayjs');
+
+// ======================================
+// 1.Declaracion de variable y constantes
+// ======================================
 const IVA = 0.21;
-
 let nombreCliente = "Tom Smith";
-let dirCliente = "Evergreen Terrace 742";
-let tlfCliente = "123456789"
-let subtotal = 110;
 let stock = true;
-let porcentDescuento = 0;
-let fechaEntrega = dayjs().add(3, 'day').format('DD-MM-YYYY');
 
-const productos = [
-    {nombre: "Producto 1", precio: 50, cantidad: 1},
-    {nombre: "Producto 2", precio: 10, cantidad: 4},
-    {nombre: "Producto 3", precio: 25, cantidad: 2},
-    {nombre: "Producto 4", precio: 5, cantidad: 15},
+// Array de objetos para el carrito
+const carrito = [
+    {nombre: "Huevos Eco", precio: 50, cantidad: 1, esFragil: true},
+    {nombre: "AOVE", precio: 80, cantidad: 4, esFragil: true},
+    {nombre: "Miel Eco", precio: 25, cantidad: 2, esFragil: true},
+    {nombre: "Manzanas Eco", precio: 15, cantidad: 2, esFragil: false}
 ]
 
+// ======================================
+// 2.Manipulacion de datos
+// ======================================
+
+// Normalizar el nombre a maysuculas
 let nombreNorm = nombreCliente.toLocaleUpperCase();
-let direcNorm = dirCliente.toUpperCase();
-let tlfNorm = tlfCliente.replace(/-/g, '');
 
-let esFragil = productos.includes(producto => producto.nombre.toLowerCase().includes("fragil"));
+// Calcular el subtotal recorriendo el carrito
+let subtotal = 0;
+carrito.forEach( producto => {subtotal += producto.cantidad * producto.precio} );
 
-function comprobarStock(productos) {
-    if (!stock) {
-        console.log("No hay stock disponible");
-        return false;
-    }
+// Comprobamos si algun producto es fragil
+let envioFragil = carrito.some( producto => producto.esFragil === true);
 
-    return productos.every(producto => producto.cantidad > 0);
+// ======================================
+// 3.Control de flujo (Validacion y Descuento)
+// ======================================
+if (!stock) {
+    console.log("Error: Hay productos en el carrito que no estan en stock");
+    process.exit(); 
 }
 
-function porcentajeDescuento(subtotal) {
-    if (subtotal >= 100) {
-        return porcentDescuento = 0.05;
-    } else {
-        return porcentDescuento = 0;
-    }
+// Comrobar si hay descuento
+let porcentajeDescuento = 0;
+if (subtotal >= 100) {
+    porcentajeDescuento = 0.05;
 }
 
-function calcularTotal(subtotal, porcentDescuento) {
-    let totalConDesc = subtotal * (1 - porcentDescuento);
-    let totalConIVA = totalConDesc * (1 + IVA);
+// ==========================================
+// 4. Cálculos Aritméticos
+// ==========================================
+let descuentoAplicado = subtotal * porcentajeDescuento;
+let subtotalDescontado = subtotal - descuentoAplicado;
 
-    return totalConIVA;
-}
+// Calculo del total aplicando el IVA
+let total = subtotalDescontado * (1 + IVA);
 
-function entregarPedido() {
-    if (comprobarStock(productos)) {
-        const descAplicado = porcentajeDescuento(subtotal);
-        const total = calcularTotal(subtotal, descAplicado);
-        const subtotalConDesc = subtotal * (1 - descAplicado);
+// ==========================================
+// 5. Fechas con dayjs
+// ==========================================
 
-        const resumenPedido = `
-        =========================================
-        🌱 TIENDA ECO - RESUMEN DEL PEDIDO 🌱
-        =========================================
-        👤 Cliente: ${nombreNorm}
-        📦 Productos: ${productos.join(", ")}
-        ⚠️ ¿Contiene frágiles?: ${esFragil ? "Sí (Se requiere embalaje especial)" : "No"}
+// Sumamos 3 días a la fecha actual para la entrega
+let fechaEntrega = dayjs().add(3, 'day').format('DD/MM/YYYY');
 
-        --- Desglose de Facturación ---
-        Subtotal inicial: ${subtotal.toFixed(2)}€
-        Descuento aplicado: ${descAplicado * 100}%
-        Subtotal tras descuento: ${subtotalConDesc.toFixed(2)}€
-        Impuestos (IVA 21%): ${(subtotalConDesc * IVA).toFixed(2)}€
-        -----------------------------------------
-        💶 TOTAL A PAGAR: ${total.toFixed(2)}€
-        =========================================
-        🚚 Fecha estimada de entrega: ${fechaEntrega}
-        =========================================
-        `;
+// ==========================================
+// 6. Template Literals (Resumen en consola)
+// ==========================================
 
-        console.log(resumenPedido);
-    }
-}
+// Creamos una lista de string para mostrar los productos del carrito
+let listaCarrito = carrito.map(p => `${p.cantidad}x ${p.nombre}`).join("\n - ");
 
-entregarPedido();
+const resumenPedido = `
+=========================================
+🌱 TIENDA ECO - RESUMEN DEL PEDIDO 🌱
+=========================================
+👤 Cliente: ${nombreNorm}
+📦 Productos en el carrito:
+  - ${listaCarrito}
+
+⚠️ Embalaje especial por productos frágiles: ${envioFragil ? "SÍ REQUERIDO" : "No necesario"}
+
+--- Desglose de Facturación ---
+Subtotal inicial: ${subtotal.toFixed(2)}€
+Descuento aplicado (${porcentajeDescuento * 100}%): -${descuentoAplicado.toFixed(2)}€
+Subtotal tras descuento: ${subtotalDescontado.toFixed(2)}€
+Impuestos (IVA 21%): ${(subtotalDescontado * IVA).toFixed(2)}€
+-----------------------------------------
+💶 TOTAL A PAGAR: ${total.toFixed(2)}€
+=========================================
+🚚 Fecha estimada de entrega: ${fechaEntrega}
+=========================================
+`;
+
+// Mostrar en consola
+console.log(resumenPedido);
