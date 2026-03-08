@@ -4,90 +4,105 @@ const dayjs = require('dayjs');
 // ======================================
 // 1.Declaracion de variable y constantes
 // ======================================
-const IVA = 0.21;
-let nombreCliente = "Tom Smith";
-let stock = true;
+const CONFIG = {
+    iva: 0.21,
+    descuentoUmbral: 100,
+    descuentoPorcentaje: 0.05,
+    costeEnvio: 5.99,
+    envioGratisUmbral: 50
+}
+
+// Datos del cliente
+const cliente = {
+    nombre: "tom smith",
+    email: "tom.smith@email.com"
+}
 
 // Array de objetos para el carrito
 const carrito = [
-    {nombre: "Huevos Eco", precio: 50, cantidad: 1, esFragil: true},
-    {nombre: "AOVE", precio: 80, cantidad: 4, esFragil: true},
-    {nombre: "Miel Eco", precio: 25, cantidad: 2, esFragil: true},
-    {nombre: "Manzanas Eco", precio: 15, cantidad: 2, esFragil: false}
+    {nombre: "Huevos Eco", precio: 50, cantidad: 1, esFragil: true, stockDisp: 10},
+    {nombre: "AOVE", precio: 80, cantidad: 4, esFragil: true, stockDisp: 5},
+    {nombre: "Miel Eco", precio: 25, cantidad: 2, esFragil: true, stockDisp: 0},
+    {nombre: "Manzanas Eco", precio: 15, cantidad: 2, esFragil: false, stockDisp: 5}
 ]
 
 // ======================================
-// 2.Manipulacion de datos
+// 2.Funciones modulares
 // ======================================
 
-// Normalizar el nombre a maysuculas
-let nombreNorm = nombreCliente.toLocaleUpperCase();
-
-// Calcular el subtotal recorriendo el carrito
-let subtotal = 0;
-carrito.forEach( producto => {subtotal += producto.cantidad * producto.precio} );
-
-// Comprobamos si algun producto es fragil
-let envioFragil = carrito.some( producto => producto.esFragil === true);
-
-// ======================================
-// 3.Control de flujo (Validacion y Descuento)
-// ======================================
-if (!stock) {
-    console.log("Error: Hay productos en el carrito que no estan en stock");
-    process.exit(); 
+// Verifica que hay stock de cada producto
+function validarStock(carrito) {
+    return carrito.every(p => p.cantidad <= p.stockDisp);
 }
 
-// Comrobar si hay descuento
-let porcentajeDescuento = 0;
-if (subtotal >= 100) {
-    porcentajeDescuento = 0.05;
+// Calcular el subtotal
+function calcularSubtotal(carrito) {
+    return carrito.reduce((subTotal, p) => subTotal + (p.precio * p.cantidad), 0);
 }
 
-// ==========================================
-// 4. Cálculos Aritméticos
-// ==========================================
-let descuentoAplicado = subtotal * porcentajeDescuento;
-let subtotalDescontado = subtotal - descuentoAplicado;
+// Determina los gastos de envio
+function calcularEnvio(subTotal) {
+    return subTotal >= CONFIG.envioGratisUmbral ? 0 : CONFIG.costeEnvio;
+}
 
-// Calculo del total aplicando el IVA
-let total = subtotalDescontado * (1 + IVA);
+// Genera la factura final
+function procesarPedido(datosCliente, productos) {
+    console.log("⏳ Procesando pedido...\n");
 
-// ==========================================
-// 5. Fechas con dayjs
-// ==========================================
+    // 1. Validar Stock
+    if (!validarStock(productos)) {
+        console.log("❌Error. No hay stock suficiente de alguno de los productos")
+    }
 
-// Sumamos 3 días a la fecha actual para la entrega
-let fechaEntrega = dayjs().add(3, 'day').format('DD/MM/YYYY');
+    // 2. Cálculos base
+    const subTotal = calcularSubtotal(productos);
+    const envioFragil = productos.some(p => p.esFragil === true);
+    
+    // 3. Descuentos
+    let descuento = 0;
+    if (subTotal >= CONFIG.descuentoUmbral) {
+        descuento = subTotal * CONFIG.descuentoPorcentaje;
+    }
+    const subtotalConDesc = subTotal - descuento;
 
-// ==========================================
-// 6. Template Literals (Resumen en consola)
-// ==========================================
+    // 4. Impuestos y Envío
+    const impuestos = subtotalConDesc * CONFIG.iva;
+    const gastosEnvio = calcularEnvio(subtotalConDesc);
+    const total = subtotalConDesc + impuestos + gastosEnvio;
 
-// Creamos una lista de string para mostrar los productos del carrito
-let listaCarrito = carrito.map(p => `${p.cantidad}x ${p.nombre}`).join("\n - ");
+    // 5. Fecha
+    const fechaEntrega = dayjs().add(3, 'day').format('DD/MM/YYYY');
 
-const resumenPedido = `
+    // 6. Formateo de salida
+    const nombresProductos = productos.map(p => `${p.cantidad}x ${p.nombre}`).join("\n - ");
+
+    return `
 =========================================
-🌱 TIENDA ECO - RESUMEN DEL PEDIDO 🌱
+🌱 TIENDA ECO - FACTURA OFICIAL 🌱
 =========================================
-👤 Cliente: ${nombreNorm}
-📦 Productos en el carrito:
-  - ${listaCarrito}
+👤 Cliente: ${datosCliente.nombre.toUpperCase()}
+📧 Contacto: ${datosCliente.email}
 
-⚠️ Embalaje especial por productos frágiles: ${envioFragil ? "SÍ REQUERIDO" : "No necesario"}
+📦 Productos:
+  - ${nombresProductos}
+⚠️ Embalaje especial: ${envioFragil ? "SÍ (Precaución: Frágil)" : "No"}
 
---- Desglose de Facturación ---
-Subtotal inicial: ${subtotal.toFixed(2)}€
-Descuento aplicado (${porcentajeDescuento * 100}%): -${descuentoAplicado.toFixed(2)}€
-Subtotal tras descuento: ${subtotalDescontado.toFixed(2)}€
-Impuestos (IVA 21%): ${(subtotalDescontado * IVA).toFixed(2)}€
+--- Desglose ---
+Subtotal: ${subTotal.toFixed(2)}€
+Descuento: -${descuento.toFixed(2)}€
+Base Imponible: ${subtotalConDesc.toFixed(2)}€
+IVA (21%): +${impuestos.toFixed(2)}€
+Envío: ${gastosEnvio === 0 ? "GRATIS" : `+${gastosEnvio.toFixed(2)}€`}
 -----------------------------------------
 💶 TOTAL A PAGAR: ${total.toFixed(2)}€
 =========================================
-🚚 Fecha estimada de entrega: ${fechaEntrega}
+🚚 Entrega estimada: ${fechaEntrega}
 =========================================
 `;
+}
 
-// Mostrar en consola
-console.log(resumenPedido);
+// ==========================================
+// 3. Ejecución del Programa
+// ==========================================
+const resultado = procesarPedido(cliente, carrito);
+console.log(resultado);
