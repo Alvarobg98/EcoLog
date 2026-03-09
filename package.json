@@ -1,12 +1,13 @@
 {
   "dependencies": {
-    "dayjs": "^1.11.19"
+    "dayjs": "^1.11.19",
+    "file": "^0.2.2",
+    "system": "^2.0.1"
   },
   "name": "ecolog",
   "version": "1.0.0",
   "description": "Sistema de Registro y Seguimiento de Pedidos para Comercio Local",
   "main": "index.js",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

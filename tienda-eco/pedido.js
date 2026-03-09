@@ -1,5 +1,6 @@
 // Libreria dayjs importada
 const dayjs = require('dayjs');
+const fs = require('fs/promises');
 
 // ======================================
 // 1.Declaracion de variable y constantes
@@ -17,14 +18,6 @@ const cliente = {
     nombre: "tom smith",
     email: "tom.smith@email.com"
 }
-
-// Array de objetos para el carrito
-const carrito = [
-    {nombre: "Huevos Eco", precio: 50, cantidad: 1, esFragil: true, stockDisp: 10},
-    {nombre: "AOVE", precio: 80, cantidad: 4, esFragil: true, stockDisp: 5},
-    {nombre: "Miel Eco", precio: 25, cantidad: 2, esFragil: true, stockDisp: 0},
-    {nombre: "Manzanas Eco", precio: 15, cantidad: 2, esFragil: false, stockDisp: 5}
-]
 
 // ======================================
 // 2.Funciones modulares
@@ -46,23 +39,20 @@ function calcularEnvio(subTotal) {
 }
 
 // Genera la factura final
-function procesarPedido(datosCliente, productos) {
+function generarFactura(datosCliente, productos) {
     console.log("⏳ Procesando pedido...\n");
 
     // 1. Validar Stock
     if (!validarStock(productos)) {
-        console.log("❌Error. No hay stock suficiente de alguno de los productos")
+        throw new Error("No hay stock suficiente de alguno de los productos")
     }
 
     // 2. Cálculos base
     const subTotal = calcularSubtotal(productos);
-    const envioFragil = productos.some(p => p.esFragil === true);
+    const envioFragil = productos.some(p => p.esFragil);
     
     // 3. Descuentos
-    let descuento = 0;
-    if (subTotal >= CONFIG.descuentoUmbral) {
-        descuento = subTotal * CONFIG.descuentoPorcentaje;
-    }
+    let descuento = subTotal >= CONFIG.descuentoUmbral ? (subTotal * CONFIG.descuentoPorcentaje) : 0;
     const subtotalConDesc = subTotal - descuento;
 
     // 4. Impuestos y Envío
@@ -104,5 +94,20 @@ Envío: ${gastosEnvio === 0 ? "GRATIS" : `+${gastosEnvio.toFixed(2)}€`}
 // ==========================================
 // 3. Ejecución del Programa
 // ==========================================
-const resultado = procesarPedido(cliente, carrito);
-console.log(resultado);
+async function procesarCompra() {
+    console.log("⏳ Leyendo base de datos e iniciando el procesamiento...\n");
+
+    try {
+        const datosCrudos = await fs.readFile('./carrito.json', 'utf-8');
+        const carrito = JSON.parse(datosCrudos);
+
+        const recibo = generarFactura(cliente, carrito);
+        console.log(recibo);
+    } catch (error) {
+        console.error("❌ Operacion cancelada:");
+        console.error("Motivo:", error.message);
+    }
+}
+
+// Ejecucion del programa
+procesarCompra();
